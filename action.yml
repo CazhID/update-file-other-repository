@@ -1,0 +1,35 @@
+name: 'Update File in Other Repository'
+description: 'Clone another repo, run a script to modify files, then commit and push.'
+author: 'CazhID'
+
+branding:
+  icon: 'git-commit'
+  color: 'blue'
+
+inputs:
+  target-repository:
+    description: 'Authenticated git URL (https://x-access-token:TOKEN@github.com/org/repo.git) OR owner/repo'
+    required: true
+  target-branch:
+    description: 'Branch to checkout and push back to'
+    required: true
+    default: 'main'
+  author-name:
+    description: 'Git commit author name'
+    required: false
+    default: 'github-actions'
+  author-email:
+    description: 'Git commit author email'
+    required: false
+    default: 'github-actions@users.noreply.github.com'
+  commit-message:
+    description: 'Commit message'
+    required: false
+    default: 'chore: update file(s) via CI'
+  script:
+    description: 'Bash script executed inside the cloned repo (working dir = repo root)'
+    required: true
+
+runs:
+  using: 'node20'
+  main: 'index.js'
