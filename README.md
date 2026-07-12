@@ -14,7 +14,7 @@ build in one repo needs to bump an image tag, version, or config file in a separ
 
 ```yaml
 - name: Bump version in config repo
-  uses: your-org/update-file-other-repository@v1
+  uses: cazhid/update-file-other-repository@v1
   with:
     target-repository: ${{ secrets.TARGET_REPO_TOKEN_URL }}
     target-branch: main
