@@ -9,6 +9,8 @@ build in one repo needs to bump an image tag, version, or config file in a separ
   runs with the cloned repo as the working directory.
 - **No empty commits** — if your script changes nothing, the action exits cleanly without
   committing.
+- **Survives a concurrent push** — if someone else pushed to the branch first, the action
+  starts over from what is on the branch now, re-runs your script, and pushes again.
 
 ## Usage
 
@@ -58,6 +60,32 @@ already grant push access to that repo.
 2. Configure the commit author from `author-name` / `author-email`.
 3. Run `script` with the cloned repo as the working directory.
 4. If nothing changed, skip. Otherwise `git add -A`, commit with `commit-message`, and push.
+5. If the push is rejected because another run pushed first, reset to the branch's new head,
+   re-run `script` on top of it, and push again — up to four retries, backing off 2s, 5s, 10s,
+   then 20s.
+
+### Why it retries by re-running the script, not by rebasing
+
+The common case is several repos bumping an image tag in the **same** GitOps file. Two runs
+therefore touch the same line, which is exactly where a rebase conflicts. Re-running the script
+sidesteps that: a script that sets a value (`sed -i 's/^imageTag: .*/imageTag: "X"/'`) produces
+the same result on any starting tree, so it keeps whatever the winning run wrote elsewhere and
+applies your change on top. **Write the script to set a value, not to append or increment one** —
+an appending script would run twice and append twice.
+
+Without the retry the loser exits with `! [rejected] ... (fetch first)` after its image is already
+in the registry: the tag never lands and the run goes red. That failure is easy to miss, and since
+the loser is usually the later run, it leaves the *older* image deployed.
+
+## Tests
+
+```
+node test.js
+```
+
+No framework, no network. It stands up a bare repo, has the script push a competing commit the
+first time it runs so the first push is guaranteed to be rejected, and asserts both that the retry
+landed our change and that it did not clobber the run that won the race.
 
 ## License
 
