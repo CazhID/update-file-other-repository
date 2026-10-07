@@ -90,3 +90,33 @@ landed our change and that it did not clobber the run that won the race.
 ## License
 
 MIT
+
+## Staleness guard
+
+Retrying a rejected push makes the **last** pusher win, not the newest commit. When two deploys
+touch the same file, the loser replays its edit on the winner's tree, so an older build can
+overwrite a newer image tag with both runs green. That happened to `hub-service` on 2026-10-07:
+the 02:43 commit replaced the 02:46 one five minutes after it landed, and the only symptom was a
+screen that did not change.
+
+So every YAML file a script changes gets a line recording the time of the commit that produced it:
+
+```yaml
+# source-commit-at: 1791358939 (2026-10-07T02:46:19Z)
+imageTag: "v1.0.0-production-abc1234"
+```
+
+A run that would replace a marker newer than its own **fails** instead, before pushing. The check
+runs after the script (that is when the changed files are known) and again on every retry (that is
+when the branch has moved).
+
+Nothing to configure. The commit time comes from the push event the action is running inside, and
+the files come from what the script actually changed. Two deliberate limits:
+
+- **YAML only** (`.yaml` / `.yml`). The marker is a `#` comment, which is a comment in YAML and not
+  in JSON or most other things a caller might edit.
+- **Push events only.** A `workflow_dispatch` has no `head_commit`, so there is nothing to compare
+  and the guard stands down rather than blocking the run.
+
+A refused run is not a broken one: a newer commit reached the branch first, and nothing needs
+redoing. The error message says so.
